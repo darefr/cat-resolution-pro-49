@@ -14,3 +14,13 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+
+# Android SDK and generated build output
+android/.gradle/
+android/**/build/
+android/local.properties
+android/app/src/main/assets/
+android/app/src/main/res/drawable/cat_emblem.png
+*.jks
+*.keystore
+*.tsbuildinfo

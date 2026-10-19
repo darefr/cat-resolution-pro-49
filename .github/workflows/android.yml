@@ -1,0 +1,46 @@
+name: Build Android test APK
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'native-ui/**'
+      - 'scripts/**'
+      - 'app/globals.css'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '12.3.4'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm android:build
+      - run: pnpm android:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cat-resolution-android-test-build
+          path: public/downloads/
+          retention-days: 14
