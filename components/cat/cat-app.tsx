@@ -48,8 +48,8 @@ export function CatApp() {
     operation.current = true
     setBusy(true)
     try {
-      await nativeRequest(action, payload)
-      await refresh()
+      const nextState = await nativeRequest(action, payload)
+      await refresh(nextState, { revalidate: false })
       if (message) toast.success(message)
       return true
     } catch (error) {

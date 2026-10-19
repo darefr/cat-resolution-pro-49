@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import useSWR from 'swr'
 import { initialDeviceState, type DeviceState } from '@/lib/cat-types'
 
@@ -48,13 +49,29 @@ export async function nativeRequest<T = DeviceState>(action: string, payload: Re
   })
 }
 
+const initialAndroidState: DeviceState = {
+  ...initialDeviceState,
+  native: true,
+  shizuku: 'waiting',
+  deviceName: 'Android device',
+}
+
 export function useDevice() {
+  const native = isAndroidApp()
+  const fallback = native ? initialAndroidState : initialDeviceState
   const { data, error, mutate } = useSWR<DeviceState>('cat-device', () => isAndroidApp() ? nativeRequest('state') : Promise.resolve(initialDeviceState), {
-    fallbackData: initialDeviceState,
-    refreshInterval: (state) => state?.native ? (state.display?.pending ? 1000 : 4000) : 0,
+    fallbackData: fallback,
+    refreshInterval: (state) => native ? (state?.display?.pending || ['waiting', 'requesting', 'connecting'].includes(state?.shizuku ?? '') ? 1000 : 4000) : 0,
     revalidateOnFocus: true,
     shouldRetryOnError: false,
     dedupingInterval: 400,
   })
-  return { device: data ?? initialDeviceState, error, refresh: mutate }
+
+  useEffect(() => {
+    const revalidate = () => { void mutate().catch(() => undefined) }
+    window.addEventListener('cat-device-changed', revalidate)
+    return () => window.removeEventListener('cat-device-changed', revalidate)
+  }, [mutate])
+
+  return { device: data ?? fallback, error, refresh: mutate }
 }

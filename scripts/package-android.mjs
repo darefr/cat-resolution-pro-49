@@ -7,10 +7,20 @@ import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'public/downloads')
 const apk = path.join(root, 'android/app/build/outputs/apk/debug/app-debug.apk')
+const buildConfig = await readFile(path.join(root, 'android/app/build.gradle'), 'utf8')
+const version = buildConfig.match(/versionName\s+'([\d.]+)'/)?.[1]
+if (!version) throw new Error('Android versionName is missing.')
+const versionedName = `cat-resolution-${version}.apk`
 await mkdir(output, { recursive: true })
-await copyFile(apk, path.join(output, 'cat-resolution.apk'))
+await Promise.all([
+  copyFile(apk, path.join(output, 'cat-resolution.apk')),
+  copyFile(apk, path.join(output, versionedName)),
+])
 const checksum = createHash('sha256').update(await readFile(apk)).digest('hex')
-await writeFile(path.join(output, 'cat-resolution.apk.sha256'), `${checksum}  cat-resolution.apk\n`)
+await Promise.all([
+  writeFile(path.join(output, 'cat-resolution.apk.sha256'), `${checksum}  cat-resolution.apk\n`),
+  writeFile(path.join(output, `${versionedName}.sha256`), `${checksum}  ${versionedName}\n`),
+])
 
 execFileSync('python3', ['-c', `
 import pathlib, zipfile

@@ -28,6 +28,9 @@ public final class MainActivity extends Activity {
     private static final String ASSET_ORIGIN = "https://appassets.androidplatform.net";
     private WebView webView;
     private AppController controller;
+    private final Runnable connectionListener = () -> {
+        if (webView != null && !isDestroyed()) webView.evaluateJavascript("window.dispatchEvent(new Event('cat-device-changed'));", null);
+    };
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,12 +74,25 @@ public final class MainActivity extends Activity {
             }
         });
         webView.addJavascriptInterface(new NativeBridge(), "CatNative");
+        controller.addStateListener(connectionListener);
         webView.loadUrl(ASSET_ORIGIN + "/index.html");
     }
 
     @Override protected void onResume() {
         super.onResume();
-        if (controller != null) controller.ensureBound();
+        if (controller != null) controller.onForeground();
+    }
+
+    @Override protected void onPause() {
+        if (controller != null) controller.onBackground();
+        super.onPause();
+    }
+
+    private void openShizuku() {
+        controller.prepareForShizuku();
+        Intent launch = getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
+        if (launch != null) startActivity(launch);
+        else openExternal("https://shizuku.rikka.app/download/");
     }
 
     private void openExternal(String url) {
@@ -122,13 +138,10 @@ public final class MainActivity extends Activity {
                     if (input == null) input = new JSONObject();
                     switch (action) {
                         case "state": break;
-                        case "requestShizuku": onUi(controller::requestPermission); break;
-                        case "openShizuku":
-                            onUi(() -> {
-                                Intent launch = getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
-                                if (launch != null) startActivity(launch); else openExternal("https://shizuku.rikka.app/download/");
-                            });
-                            break;
+                        case "requestShizuku": onUi(() -> { if (!controller.requestPermission()) openShizuku(); }); break;
+                        case "reconnectShizuku": onUi(() -> { if (!controller.reconnectDisplay()) openShizuku(); }); break;
+                        case "recheckShizuku": onUi(controller::recheckConnection); break;
+                        case "openShizuku": onUi(MainActivity.this::openShizuku); break;
                         case "overlayPermission": onUi(() -> startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())))); break;
                         case "notificationPermission":
                             onUi(() -> {
@@ -172,6 +185,7 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (controller != null) controller.removeStateListener(connectionListener);
         if (webView != null) {
             webView.removeJavascriptInterface("CatNative");
             webView.destroy();

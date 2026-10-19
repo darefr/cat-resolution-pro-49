@@ -20,7 +20,11 @@ export type Preferences = { overlayOpacity: number; overlaySize: number; restore
 
 export type DeviceState = {
   native: boolean
-  shizuku: 'unavailable' | 'stopped' | 'permission' | 'connecting' | 'ready'
+  appVersion: string
+  shizuku: 'unavailable' | 'stopped' | 'waiting' | 'permission' | 'requesting' | 'denied' | 'connecting' | 'error' | 'ready'
+  shizukuInstalled: boolean
+  shizukuRunning: boolean
+  shizukuPermissionGranted: boolean
   overlayPermission: boolean
   overlayRunning: boolean
   notificationPermission: boolean
@@ -42,7 +46,11 @@ export const builtInPresets: Preset[] = [
 
 export const initialDeviceState: DeviceState = {
   native: false,
+  appVersion: '',
   shizuku: 'unavailable',
+  shizukuInstalled: false,
+  shizukuRunning: false,
+  shizukuPermissionGranted: false,
   overlayPermission: false,
   overlayRunning: false,
   notificationPermission: false,
